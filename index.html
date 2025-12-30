@@ -90,9 +90,13 @@
         }
 
         .countdown {
-            margin-bottom: 20px;
-            /* Hidden text label "Time until..." */
-            display: none;
+            margin-bottom: 2vw;
+            font-size: 3vw;
+            font-weight: 300;
+            letter-spacing: 0.2vw;
+            text-transform: uppercase;
+            opacity: 0.8;
+            display: block;
         }
 
         .time-units {
@@ -235,7 +239,7 @@
             🎊 HAPPY NEW YEAR 2026! 🎊
         </div>
         <div class="countdown" id="countdown">
-            2 0 2 6
+            2&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;6
         </div>
         <div class="time-units" id="timeUnits">
             <div class="time-unit">
@@ -261,12 +265,13 @@
     </div>
 
     <div class="info" id="info"></div>
-
+    <!--
     <div class="test-controls">
         <button class="test-btn" onclick="testBirthday()">Test Birthday</button>
         <button class="test-btn" onclick="testNewYear()">Test New Year</button>
         <button class="test-btn" onclick="resetTest()">Reset</button>
     </div>
+    -->
 
     <script>
         const canvas = document.getElementById('fireworks');
@@ -441,12 +446,40 @@
             canvas.classList.add('active'); // Ensure visible
             animateFireworks();
 
-            // Constant fireworks
-            setInterval(() => {
+            let currentDelay = 1000;
+            let targetDelay = 1000;
+
+            // Randomly change the "mood" (speed) of fireworks
+            function changeMood() {
+                // Random target between 200ms (fast) and 1800ms (slow)
+                targetDelay = Math.random() * 1600 + 200;
+
+                // Change mood again every 10 seconds
+                setTimeout(changeMood, 10000);
+            }
+            changeMood();
+
+            // Dynamic intensity loop
+            function loop() {
                 const x = Math.random() * canvas.width;
                 const y = Math.random() * canvas.height * 0.6;
                 createFireworks(x, y);
-            }, 300); // Frequency of fireworks
+
+                // If New Year started, force distinct high intensity
+                let actualTarget = newYearStarted ? 150 : targetDelay;
+
+                // Smoothly interpolate current delay towards target (Linear interpolation)
+                // Move 10% of the way there each shot for smooth transitions
+                currentDelay += (actualTarget - currentDelay) * 0.1;
+
+                // Add small randomness to each shot so it's not robotic
+                const finalDelay = currentDelay + (Math.random() * 100 - 50);
+
+                // Ensure delay doesn't go below min threshold
+                setTimeout(loop, Math.max(100, finalDelay));
+            }
+
+            loop();
         }
 
         function startNewYear() {
