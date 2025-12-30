@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 New Year Countdown</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Outfit', sans-serif;
+            color: #fff;
+        }
+
+        /* Stars */
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: transparent;
+            z-index: 0;
+        }
+
+        .container {
+            text-align: center;
+            z-index: 10;
+            position: relative;
+        }
+
+        .birthday-message {
+            font-size: 3vw;
+            font-weight: 700;
+            color: #ff1493;
+            text-shadow: 0 0 20px #ff1493, 0 0 40px #ff69b4;
+            animation: pulse 1s ease-in-out infinite;
+            display: none;
+            margin-bottom: 30px;
+            letter-spacing: 2px;
+        }
+
+        .birthday-message.show {
+            display: block;
+        }
+
+        .new-year-greeting {
+            font-size: 5vw;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.5);
+            animation: glow 2s ease-in-out infinite;
+            display: none;
+            margin-bottom: 30px;
+        }
+
+        .new-year-greeting.show {
+            display: block;
+        }
+
+        .countdown {
+            margin-bottom: 20px;
+            /* Hidden text label "Time until..." */
+            display: none;
+        }
+
+        .time-units {
+            display: flex;
+            justify-content: center;
+            gap: 2vw;
+            margin-top: 0;
+            flex-wrap: nowrap;
+        }
+
+        .time-unit {
+            /* Removed borders and bg */
+            background: transparent;
+            border: none;
+            padding: 0;
+            text-align: center;
+            width: 12vw;
+            /* Fixed width to prevent jumping */
+        }
+
+        .unit-value {
+            font-size: 10vw;
+            font-weight: 300;
+            /* Thin font */
+            color: #ffffff;
+            display: block;
+            line-height: 1;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .separator {
+            font-size: 8vw;
+            font-weight: 300;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1;
+            align-self: flex-start;
+            margin-top: 1vw;
+            /* Visual alignment correction */
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+
+        .unit-label {
+            display: none;
+            /* User requested removal */
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.05);
+                opacity: 0.8;
+            }
+        }
+
+        @keyframes glow {
+
+            0%,
+            100% {
+                text-shadow: 0 0 30px rgba(255, 255, 255, 0.5);
+            }
+
+            50% {
+                text-shadow: 0 0 50px rgba(255, 255, 255, 0.8), 0 0 80px rgba(255, 255, 255, 0.5);
+            }
+        }
+
+        /* Fireworks */
+        canvas#fireworks {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            /* Always visible */
+            display: block;
+        }
+
+        .info {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.3);
+            font-family: 'Outfit', sans-serif;
+            font-weight: 300;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="fireworks"></canvas>
+
+    <div class="container">
+        <div class="birthday-message" id="birthdayMessage">
+            🎉 Happy Birthday, Danilo Mesina! 🎉
+        </div>
+        <div class="new-year-greeting" id="newYearGreeting">
+            🎊 HAPPY NEW YEAR 2026! 🎊
+        </div>
+        <div class="countdown" id="countdown">
+            Time until 2026
+        </div>
+        <div class="time-units" id="timeUnits">
+            <div class="time-unit">
+                <span class="unit-value" id="days">00</span>
+                <div class="unit-label">Days</div>
+            </div>
+            <span class="separator">:</span>
+            <div class="time-unit">
+                <span class="unit-value" id="hours">00</span>
+                <div class="unit-label">Hours</div>
+            </div>
+            <span class="separator">:</span>
+            <div class="time-unit">
+                <span class="unit-value" id="minutes">00</span>
+                <div class="unit-label">Minutes</div>
+            </div>
+            <span class="separator">:</span>
+            <div class="time-unit">
+                <span class="unit-value" id="seconds">00</span>
+                <div class="unit-label">Seconds</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="info" id="info"></div>
+
+    <script>
+        const canvas = document.getElementById('fireworks');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let particles = [];
+        let newYearStarted = false;
+        let birthdayShown = false;
+
+        // Particle class for fireworks
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 12;
+                this.vy = (Math.random() - 0.5) * 12 - 3;
+                this.life = 1;
+                this.decay = Math.random() * 0.015 + 0.008;
+                this.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+                this.size = Math.random() * 4 + 2;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.1; // gravity
+                this.life -= this.decay;
+            }
+
+            draw(ctx) {
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = this.life;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        function createFireworks(x, y) {
+            for (let i = 0; i < 30; i++) {
+                particles.push(new Particle(x, y));
+            }
+        }
+
+        function animateFireworks() {
+            // Semi-transparent clear for trails
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)'; // Adjust trail length here
+            ctx.fillRect(0, 0, canvas.width, canvas.height); // Use fillRect instead of clearRect
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                particles[i].draw(ctx);
+
+                if (particles[i].life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            requestAnimationFrame(animateFireworks);
+        }
+
+        function playSound(frequency, duration) {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.frequency.value = frequency;
+                oscillator.type = 'sine';
+
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + duration);
+            } catch (e) {
+                // Audio context not supported
+            }
+        }
+
+        function startFireworksLoop() {
+            canvas.classList.add('active'); // Ensure visible
+            animateFireworks();
+
+            // Constant fireworks
+            setInterval(() => {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height * 0.6;
+                createFireworks(x, y);
+            }, 300); // Frequency of fireworks
+        }
+
+        function startNewYear() {
+            newYearStarted = true;
+            document.getElementById('birthdayMessage').classList.remove('show');
+            document.getElementById('newYearGreeting').classList.add('show');
+            document.getElementById('countdown').style.display = 'none'; // Ensure strictly hidden
+            document.getElementById('timeUnits').style.display = 'none';
+
+            // Increase intensity for New Year if desired, or just let it continue
+        }
+
+        function showBirthdayMessage() {
+            if (!birthdayShown) {
+                birthdayShown = true;
+                document.getElementById('birthdayMessage').classList.add('show');
+                playSound(523, 0.3);
+                playSound(659, 0.3);
+                playSound(784, 0.3);
+            }
+        }
+
+        function hideBirthdayMessage() {
+            if (birthdayShown) {
+                birthdayShown = false;
+                document.getElementById('birthdayMessage').classList.remove('show');
+            }
+        }
+
+        function updateCountdown() {
+            const now = new Date();
+            const year = now.getFullYear();
+            let targetDate = new Date(year + 1, 0, 1, 0, 0, 0);
+
+            // Check for birthday message at 11:58 PM
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+
+            if (hours === 23 && minutes === 58 && seconds < 60) {
+                showBirthdayMessage();
+            } else if (hours === 23 && minutes === 59) {
+                showBirthdayMessage();
+            } else if (hours !== 23 || minutes < 58) {
+                hideBirthdayMessage();
+            }
+
+            // Check if new year started
+            if (now.getFullYear() > year) {
+                if (!newYearStarted) {
+                    startNewYear();
+                }
+            } else {
+                const diff = targetDate - now;
+
+                if (diff <= 0) {
+                    startNewYear();
+                } else {
+                    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+                    document.getElementById('days').textContent = String(days).padStart(2, '0');
+                    document.getElementById('hours').textContent = String(hours).padStart(2, '0');
+                    document.getElementById('minutes').textContent = String(minutes).padStart(2, '0');
+                    document.getElementById('seconds').textContent = String(seconds).padStart(2, '0');
+                }
+            }
+
+            // Update info
+            const timeStr = now.toLocaleTimeString();
+            document.getElementById('info').textContent = timeStr;
+        }
+
+        // Update immediately and then every 100ms
+        // Update immediately and then every 100ms
+        updateCountdown();
+        setInterval(updateCountdown, 100);
+
+        // Start fireworks immediately
+        startFireworksLoop();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+
+</html>
