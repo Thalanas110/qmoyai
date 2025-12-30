@@ -19,7 +19,7 @@
             width: 100vw;
             height: 100vh;
             overflow: hidden;
-            background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+            background: radial-gradient(ellipse at bottom, #0B1026 0%, #000000 100%);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -28,15 +28,30 @@
         }
 
         /* Stars */
-        .stars {
+        canvas#starfield {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            pointer-events: none;
-            background: transparent;
             z-index: 0;
+            opacity: 0.8;
+        }
+
+        /* Milky Way Effect */
+        .milky-way {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(circle at 50% 50%, rgba(30, 20, 60, 0.2) 0%, transparent 60%),
+                linear-gradient(60deg, transparent 40%, rgba(255, 255, 255, 0.02) 45%, rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0.02) 55%, transparent 60%);
+            z-index: 1;
+            pointer-events: none;
+            filter: blur(3px);
+            opacity: 0.6;
         }
 
         .container {
@@ -208,6 +223,8 @@
 </head>
 
 <body>
+    <canvas id="starfield"></canvas>
+    <div class="milky-way"></div>
     <canvas id="fireworks"></canvas>
 
     <div class="container">
@@ -314,9 +331,12 @@
         }
 
         function animateFireworks() {
-            // Darker trails for clearer particles
+            // Use destination-out to fade existing canvas content to transparent
+            // This reveals the background (stars/milky way) instead of layering black
+            ctx.globalCompositeOperation = 'destination-out';
             ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.globalCompositeOperation = 'source-over'; // Reset to default drawing
 
             for (let i = particles.length - 1; i >= 0; i--) {
                 const p = particles[i];
@@ -446,10 +466,37 @@
         // Start fireworks immediately
         startFireworksLoop();
 
+        // Initialize Stars
+        function initStars() {
+            const starCanvas = document.getElementById('starfield');
+            const starCtx = starCanvas.getContext('2d');
+
+            starCanvas.width = window.innerWidth;
+            starCanvas.height = window.innerHeight;
+
+            const starCount = 400;
+            starCtx.fillStyle = '#FFF';
+
+            for (let i = 0; i < starCount; i++) {
+                const x = Math.random() * starCanvas.width;
+                const y = Math.random() * starCanvas.height;
+                const radius = Math.random() * 1.5;
+                const opacity = Math.random();
+
+                starCtx.beginPath();
+                starCtx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+                starCtx.arc(x, y, radius, 0, Math.PI * 2);
+                starCtx.fill();
+            }
+        }
+
+        initStars();
+
         // Handle window resize
         window.addEventListener('resize', () => {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+            initStars(); // Re-do stars on resize
         });
 
         // Test functions
