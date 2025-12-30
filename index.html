@@ -172,6 +172,38 @@
             font-family: 'Outfit', sans-serif;
             font-weight: 300;
         }
+
+        .test-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 100;
+            display: flex;
+            gap: 10px;
+            opacity: 0.5;
+            transition: opacity 0.3s;
+        }
+
+        .test-controls:hover {
+            opacity: 1;
+        }
+
+        .test-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .test-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: #fff;
+        }
     </style>
 </head>
 
@@ -213,6 +245,12 @@
 
     <div class="info" id="info"></div>
 
+    <div class="test-controls">
+        <button class="test-btn" onclick="testBirthday()">Test Birthday</button>
+        <button class="test-btn" onclick="testNewYear()">Test New Year</button>
+        <button class="test-btn" onclick="resetTest()">Reset</button>
+    </div>
+
     <script>
         const canvas = document.getElementById('fireworks');
         const ctx = canvas.getContext('2d');
@@ -223,6 +261,7 @@
         let particles = [];
         let newYearStarted = false;
         let birthdayShown = false;
+        let isTestMode = false;
 
         // Particle class for fireworks
         class Particle {
@@ -343,16 +382,16 @@
             const year = now.getFullYear();
             let targetDate = new Date(year + 1, 0, 1, 0, 0, 0);
 
-            // Check for birthday message at 11:58 PM
+            // Re-adding variables accidentally removed by user
             const hours = now.getHours();
             const minutes = now.getMinutes();
             const seconds = now.getSeconds();
 
-            if (hours === 23 && minutes === 58 && seconds < 60) {
+            // Check for birthday message (last 30 seconds: 23:58:00 - 23:58:30)
+            if (hours === 23 && minutes === 58 && seconds >= 0 && seconds < 30) {
                 showBirthdayMessage();
-            } else if (hours === 23 && minutes === 59) {
-                showBirthdayMessage();
-            } else if (hours !== 23 || minutes < 58) {
+            }
+            else if (!isTestMode) {
                 hideBirthdayMessage();
             }
 
@@ -397,6 +436,34 @@
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
         });
+
+        // Test functions
+        function testBirthday() {
+            resetTest();
+            isTestMode = true;
+            newYearStarted = false;
+            document.getElementById('countdown').style.display = 'block';
+            document.getElementById('timeUnits').style.display = 'flex';
+
+            showBirthdayMessage();
+        }
+
+        function testNewYear() {
+            resetTest();
+            isTestMode = true;
+            startNewYear();
+        }
+
+        function resetTest() {
+            isTestMode = false;
+            newYearStarted = false;
+            birthdayShown = false;
+            document.getElementById('birthdayMessage').classList.remove('show');
+            document.getElementById('newYearGreeting').classList.remove('show');
+            document.getElementById('countdown').style.display = 'block';
+            document.getElementById('timeUnits').style.display = 'flex';
+            canvas.classList.add('active');
+        }
     </script>
 </body>
 
