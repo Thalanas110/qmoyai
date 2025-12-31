@@ -227,6 +227,14 @@
 </head>
 
 <body>
+    <!-- Audio element for reactive fireworks -->
+    <audio id="bgMusic" loop autoplay style="display: none;">
+        <source src="Colorful Firework with Sounds. Screensaver (4K UltraHD) [snWuppFxBCU] - Copy.mp3" type="audio/mpeg">
+    </audio>
+    
+    <!-- Click to start message -->
+    <div id="clickStart" style="position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 1000; color: rgba(255,255,255,0.5); font-family: 'Outfit', sans-serif; font-size: 14px; pointer-events: none;">Click anywhere to start audio</div>
+    
     <canvas id="starfield"></canvas>
     <div class="milky-way"></div>
     <canvas id="fireworks"></canvas>
@@ -284,19 +292,106 @@
         let newYearStarted = false;
         let birthdayShown = false;
         let isTestMode = false;
+        
+        // Audio reactive variables
+        let audioContext = null;
+        let analyser = null;
+        let dataArray = null;
+        let audioStarted = false;
+        let audioIntensity = 0;
+        
+        // Setup audio analysis from the MP3 file
+        function setupAudio() {
+            const audio = document.getElementById('bgMusic');
+            
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                
+                const source = audioContext.createMediaElementSource(audio);
+                source.connect(analyser);
+                analyser.connect(audioContext.destination);
+                
+                analyser.fftSize = 256;
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+                audioStarted = true;
+                console.log('Audio analysis enabled!');
+            } catch (e) {
+                console.log('Audio analysis failed:', e);
+                audioStarted = false;
+            }
+        }
+        
+        // Get audio intensity (0-1 range)
+        function getAudioIntensity() {
+            if (!audioStarted || !analyser) return 0.7;
+            
+            analyser.getByteFrequencyData(dataArray);
+            
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                sum += dataArray[i];
+            }
+            const average = sum / dataArray.length;
+            
+            return average / 255;
+        }
+        
+        // Get bass intensity for bigger fireworks
+        function getBassIntensity() {
+            if (!audioStarted || !analyser) return 0.7;
+            
+            analyser.getByteFrequencyData(dataArray);
+            
+            let bassSum = 0;
+            const bassRange = Math.floor(dataArray.length / 4);
+            for (let i = 0; i < bassRange; i++) {
+                bassSum += dataArray[i];
+            }
+            
+            return bassSum / (bassRange * 255);
+        }
+        
+        // Auto-start audio on first user interaction (required by browsers)
+        function initAudio() {
+            const audio = document.getElementById('bgMusic');
+            const clickMsg = document.getElementById('clickStart');
+            
+            // Try to play immediately (works with --autoplay-policy=no-user-gesture-required)
+            const playPromise = audio.play();
+            
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    setupAudio();
+                    if (clickMsg) clickMsg.style.display = 'none';
+                }).catch(e => {
+                    // Autoplay blocked, start on first click
+                    document.body.addEventListener('click', function startAudio() {
+                        audio.play().then(() => {
+                            setupAudio();
+                            if (clickMsg) clickMsg.style.display = 'none';
+                        });
+                        document.body.removeEventListener('click', startAudio);
+                    }, { once: true });
+                });
+            }
+        }
+        
+        // Initialize audio when page loads
+        initAudio();
 
         // Particle class for fireworks
         class Particle {
-            constructor(x, y, hue, velocity) {
+            constructor(x, y, hue, velocity, intensityMultiplier = 1) {
                 this.x = x;
                 this.y = y;
-                this.vx = velocity.x;
-                this.vy = velocity.y;
+                this.vx = velocity.x * intensityMultiplier;
+                this.vy = velocity.y * intensityMultiplier;
 
                 this.life = 1;
                 this.decay = Math.random() * 0.015 + 0.01;
                 this.color = hue;
-                this.size = Math.random() * 3 + 1;
+                this.size = (Math.random() * 3 + 1) * intensityMultiplier;
                 this.friction = 0.96;
                 this.gravity = 0.15;
             }
@@ -321,7 +416,7 @@
             }
         }
 
-        function createFireworks(x, y) {
+        function createFireworks(x, y, intensityMultiplier = 1) {
             const hue = Math.floor(Math.random() * 360);
             const type = Math.floor(Math.random() * 4); // 0: Circle, 1: Heart, 2: Star, 3: Ring
 
@@ -331,7 +426,7 @@
             const addParticle = (vx, vy) => {
                 // Color variation
                 const pColor = Math.random() > 0.2 ? hue : hue + Math.random() * 30 - 15;
-                particles.push(new Particle(x, y, pColor, { x: vx, y: vy }));
+                particles.push(new Particle(x, y, pColor, { x: vx, y: vy }, intensityMultiplier));
             };
 
             if (type === 0) {
@@ -446,40 +541,58 @@
             canvas.classList.add('active'); // Ensure visible
             animateFireworks();
 
-            let currentDelay = 1000;
-            let targetDelay = 1000;
-
-            // Randomly change the "mood" (speed) of fireworks
-            function changeMood() {
-                // Random target between 200ms (fast) and 1800ms (slow)
-                targetDelay = Math.random() * 1600 + 200;
-
-                // Change mood again every 10 seconds
-                setTimeout(changeMood, 10000);
+            let lastFireworkTime = 0;
+            let bassAccumulator = 0;
+            
+            // Audio-reactive fireworks loop
+            function audioReactiveLoop() {
+                const now = Date.now();
+                const intensity = getAudioIntensity();
+                const bass = getBassIntensity();
+                
+                // Update global intensity for other uses
+                audioIntensity = intensity;
+                
+                // Accumulate bass for beat detection
+                bassAccumulator += bass;
+                
+                // Calculate delay based on audio intensity
+                // Higher intensity = shorter delay = more fireworks
+                // Intensity 0 -> 400ms delay, Intensity 1 -> 30ms delay
+                let baseDelay = 400 - (intensity * 370);
+                
+                // If New Year started, force high intensity
+                if (newYearStarted) {
+                    baseDelay = Math.min(baseDelay, 80);
+                }
+                
+                // Spawn firework if enough time has passed
+                if (now - lastFireworkTime > baseDelay) {
+                    const x = Math.random() * canvas.width;
+                    const y = Math.random() * canvas.height * 0.6;
+                    
+                    // Size multiplier based on intensity (1.0 to 2.5)
+                    const sizeMultiplier = 1.0 + intensity * 1.5;
+                    
+                    createFireworks(x, y, sizeMultiplier);
+                    lastFireworkTime = now;
+                    
+                    // On strong bass hits, spawn extra fireworks
+                    if (bassAccumulator > 0.7) {
+                        const extraX = Math.random() * canvas.width;
+                        const extraY = Math.random() * canvas.height * 0.5;
+                        createFireworks(extraX, extraY, sizeMultiplier * 1.3);
+                        bassAccumulator = 0;
+                    }
+                }
+                
+                // Decay bass accumulator
+                bassAccumulator *= 0.95;
+                
+                requestAnimationFrame(audioReactiveLoop);
             }
-            changeMood();
-
-            // Dynamic intensity loop
-            function loop() {
-                const x = Math.random() * canvas.width;
-                const y = Math.random() * canvas.height * 0.6;
-                createFireworks(x, y);
-
-                // If New Year started, force distinct high intensity
-                let actualTarget = newYearStarted ? 150 : targetDelay;
-
-                // Smoothly interpolate current delay towards target (Linear interpolation)
-                // Move 10% of the way there each shot for smooth transitions
-                currentDelay += (actualTarget - currentDelay) * 0.1;
-
-                // Add small randomness to each shot so it's not robotic
-                const finalDelay = currentDelay + (Math.random() * 100 - 50);
-
-                // Ensure delay doesn't go below min threshold
-                setTimeout(loop, Math.max(100, finalDelay));
-            }
-
-            loop();
+            
+            audioReactiveLoop();
         }
 
         function startNewYear() {
